@@ -7,7 +7,7 @@ using Oxide.Core.Configuration;
 
 namespace Oxide.Plugins
 {
-    [Info("BloodHunt", "VitorVmax", "1.0.4")]
+    [Info("BloodHunt", "VitorVmax", "1.0.5")]
     [Description("Rastreia a Bolsa de Sangue no mapa e salva a chave Pix dos jogadores.")]
     public class BloodHunt : RustPlugin
     {
@@ -219,6 +219,14 @@ namespace Oxide.Plugins
 
             Puts($"[BloodHunt] Barril detectado: {prefabName}. Tentando dropar blood...");
 
+            // Obter o player que destruiu o barril
+            BasePlayer attacker = info?.InitiatorPlayer;
+            if (attacker == null || attacker.inventory == null)
+            {
+                Puts("[BloodHunt] ERRO: Não foi possível identificar o player que destruiu o barril!");
+                return;
+            }
+
             ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
             if (bloodDef == null) 
             {
@@ -226,19 +234,36 @@ namespace Oxide.Plugins
                 return;
             }
 
-            // Dropar o blood na posição do barril destruído
+            // Criar o blood e adicionar ao inventário do player
             var bloodItem = ItemManager.Create(bloodDef, 1);
             if (bloodItem != null)
             {
-                bloodItem.Drop(entity.transform.position, Vector3.up * 2f);
-                bloodDropped = true;
-                Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado em {entity.transform.position}");
-                
-                // Reset após 10 minutos (600s)
-                timer.Once(600f, () => {
-                    bloodDropped = false;
-                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
-                });
+                if (bloodItem.MoveToContainer(attacker.inventory))
+                {
+                    bloodDropped = true;
+                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood enviado para {attacker.displayName}!");
+                    attacker.ChatMessage($"<color=#ff1744>[BloodHunt]</color> Parabéns! Você ganhou o <color=#ff1744>BLOOD</color>!");
+                    
+                    // Reset após 10 minutos (600s)
+                    timer.Once(600f, () => {
+                        bloodDropped = false;
+                        Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
+                    });
+                }
+                else
+                {
+                    // Se o inventário estiver cheio, dropar no chão
+                    bloodItem.Drop(attacker.transform.position, Vector3.up * 1f);
+                    bloodDropped = true;
+                    Puts($"<color=#ff1744>[BloodHunt]</color> Inventário cheio! Blood dropado no chão.");
+                    attacker.ChatMessage($"<color=#ff1744>[BloodHunt]</color> Seu inventário está cheio! O blood foi dropado no chão!");
+                    
+                    // Reset após 10 minutos (600s)
+                    timer.Once(600f, () => {
+                        bloodDropped = false;
+                        Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
+                    });
+                }
             }
             else
             {
@@ -254,22 +279,37 @@ namespace Oxide.Plugins
             ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
             if (bloodDef == null) return;
 
-            // Dropar o blood FORA do container (no chão)
+            // Dropar o blood no inventário do player
             var bloodItem = ItemManager.Create(bloodDef, 1);
             if (bloodItem != null)
             {
-                // Dropar na posição do container com offset para não ficar preso
-                Vector3 dropPosition = container.transform.position + Vector3.up * 1f;
-                bloodItem.Drop(dropPosition, Vector3.up * 1f);
-                bloodDropped = true;
-                Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado no chão em {dropPosition}");
-                player.ChatMessage($"<color=#ff1744>[BloodHunt]</color> O blood apareceu nesta caixa!");
-                
-                // Reset após 10 minutos (600s)
-                timer.Once(600f, () => {
-                    bloodDropped = false;
-                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
-                });
+                if (bloodItem.MoveToContainer(player.inventory))
+                {
+                    bloodDropped = true;
+                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood enviado para {player.displayName}!");
+                    player.ChatMessage($"<color=#ff1744>[BloodHunt]</color> Parabéns! Você ganhou o <color=#ff1744>BLOOD</color>!");
+                    
+                    // Reset após 10 minutos (600s)
+                    timer.Once(600f, () => {
+                        bloodDropped = false;
+                        Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
+                    });
+                }
+                else
+                {
+                    // Se o inventário estiver cheio, dropar no chão
+                    Vector3 dropPosition = player.transform.position + Vector3.up * 1f;
+                    bloodItem.Drop(dropPosition, Vector3.up * 1f);
+                    bloodDropped = true;
+                    Puts($"<color=#ff1744>[BloodHunt]</color> Inventário cheio! Blood dropado no chão.");
+                    player.ChatMessage($"<color=#ff1744>[BloodHunt]</color> Seu inventário está cheio! O blood foi dropado no chão!");
+                    
+                    // Reset após 10 minutos (600s)
+                    timer.Once(600f, () => {
+                        bloodDropped = false;
+                        Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
+                    });
+                }
             }
         }
 
