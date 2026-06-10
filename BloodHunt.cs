@@ -7,7 +7,7 @@ using Oxide.Core.Configuration;
 
 namespace Oxide.Plugins
 {
-    [Info("BloodHunt", "VitorVmax", "1.0.5")]
+    [Info("BloodHunt", "VitorVmax", "1.0.6")]
     [Description("Rastreia a Bolsa de Sangue no mapa e salva a chave Pix dos jogadores.")]
     public class BloodHunt : RustPlugin
     {
@@ -47,6 +47,7 @@ namespace Oxide.Plugins
             updateTimer = timer.Every(5f, UpdateMarkerPosition);
             UpdateMarkerPosition();
             bloodDropped = false; // Inicia permitindo drop
+            Puts("[BloodHunt] Plugin inicializado!");
         }
 
         void OnUnload()
@@ -54,6 +55,7 @@ namespace Oxide.Plugins
             if (updateTimer != null) updateTimer.Destroy();
             RemoverMarcador();
             SalvarDados();
+            Puts("[BloodHunt] Plugin descarregado!");
         }
 
         #endregion
@@ -87,6 +89,37 @@ namespace Oxide.Plugins
         {
             bloodDropped = false; // Reset
             player.ChatMessage($"<color=#ffeb3b>[Debug]</color> bloodDropped resetado para false");
+            Puts("[BloodHunt] Debug: bloodDropped foi resetado!");
+        }
+
+        [ChatCommand("testblood")]
+        void CmdTestBlood(BasePlayer player, string command, string[] args)
+        {
+            Puts("[BloodHunt] TESTE: Enviando blood para o player...");
+            
+            ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
+            if (bloodDef == null) 
+            {
+                Puts("[BloodHunt] TESTE ERRO: Item 'blood' não encontrado!");
+                player.ChatMessage("<color=#ff1744>[BloodHunt]</color> ERRO: Item 'blood' não encontrado!");
+                return;
+            }
+
+            var bloodItem = ItemManager.Create(bloodDef, 1);
+            if (bloodItem != null)
+            {
+                if (bloodItem.MoveToContainer(player.inventory))
+                {
+                    Puts($"[BloodHunt] TESTE: Blood adicionado ao inventário de {player.displayName}!");
+                    player.ChatMessage("<color=#00e676>[BloodHunt]</color> TESTE: Blood adicionado ao seu inventário!");
+                }
+                else
+                {
+                    Puts($"[BloodHunt] TESTE: Inventário cheio, dropando no chão...");
+                    bloodItem.Drop(player.transform.position, Vector3.up * 1f);
+                    player.ChatMessage("<color=#ffeb3b>[BloodHunt]</color> TESTE: Seu inventário está cheio, blood dropado no chão!");
+                }
+            }
         }
 
         #endregion
@@ -206,24 +239,57 @@ namespace Oxide.Plugins
         // Hook executado quando uma entidade combat é destruída (barris, containers, etc)
         void OnEntityKilled(BaseCombatEntity entity, HitInfo info)
         {
-            if (entity == null || bloodDropped) return;
+            if (entity == null)
+            {
+                Puts("[BloodHunt] OnEntityKilled: Entity é nulo!");
+                return;
+            }
 
-            // Verificar se é um barril (pode ter várias variações)
             string prefabName = entity.ShortPrefabName;
-            Puts($"[BloodHunt] Entidade destruída: {prefabName}");
+            Puts($"[BloodHunt] OnEntityKilled chamado: {prefabName} | bloodDropped: {bloodDropped}");
             
+            // NÃO retornar se bloodDropped for true - deixar o loop rodar
+            if (bloodDropped)
+            {
+                Puts($"[BloodHunt] Blood já foi dropado, ignorando...");
+                return;
+            }
+
             if (!prefabName.Contains("barrel") && !prefabName.Contains("oil_barrel")) 
             {
                 return;
             }
 
-            Puts($"[BloodHunt] Barril detectado: {prefabName}. Tentando dropar blood...");
+            Puts($"[BloodHunt] ✓ Barril detectado: {prefabName}");
 
             // Obter o player que destruiu o barril
-            BasePlayer attacker = info?.InitiatorPlayer;
+            BasePlayer attacker = null;
+            if (info != null)
+            {
+                attacker = info.InitiatorPlayer;
+                Puts($"[BloodHunt] Info disponível, attacker: {attacker?.displayName}");
+            }
+            else
+            {
+                Puts("[BloodHunt] ⚠ Info é nulo! Tentando encontrar player próximo...");
+                
+                // Tentar encontrar player próximo ao barril
+                Collider[] colliders = Physics.OverlapSphere(entity.transform.position, 5f);
+                foreach (var collider in colliders)
+                {
+                    var player = collider.GetComponent<BasePlayer>();
+                    if (player != null && !player.IsNpc)
+                    {
+                        attacker = player;
+                        Puts($"[BloodHunt] Player encontrado próximo: {player.displayName}");
+                        break;
+                    }
+                }
+            }
+
             if (attacker == null || attacker.inventory == null)
             {
-                Puts("[BloodHunt] ERRO: Não foi possível identificar o player que destruiu o barril!");
+                Puts("[BloodHunt] ERRO: Não foi possível encontrar o player!");
                 return;
             }
 
@@ -241,13 +307,13 @@ namespace Oxide.Plugins
                 if (bloodItem.MoveToContainer(attacker.inventory))
                 {
                     bloodDropped = true;
-                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood enviado para {attacker.displayName}!");
+                    Puts($"[BloodHunt] ✓ Blood enviado para {attacker.displayName}!");
                     attacker.ChatMessage($"<color=#ff1744>[BloodHunt]</color> Parabéns! Você ganhou o <color=#ff1744>BLOOD</color>!");
                     
                     // Reset após 10 minutos (600s)
                     timer.Once(600f, () => {
                         bloodDropped = false;
-                        Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
+                        Puts($"[BloodHunt] ✓ Blood drop cooldown finalizado!");
                     });
                 }
                 else
@@ -255,61 +321,19 @@ namespace Oxide.Plugins
                     // Se o inventário estiver cheio, dropar no chão
                     bloodItem.Drop(attacker.transform.position, Vector3.up * 1f);
                     bloodDropped = true;
-                    Puts($"<color=#ff1744>[BloodHunt]</color> Inventário cheio! Blood dropado no chão.");
-                    attacker.ChatMessage($"<color=#ff1744>[BloodHunt]</color> Seu inventário está cheio! O blood foi dropado no chão!");
+                    Puts($"[BloodHunt] ⚠ Inventário cheio! Blood dropado no chão.");
+                    attacker.ChatMessage($"<color=#ff1744>[BloodHunt]</color> Inventário cheio! O blood foi dropado no chão!");
                     
                     // Reset após 10 minutos (600s)
                     timer.Once(600f, () => {
                         bloodDropped = false;
-                        Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
+                        Puts($"[BloodHunt] ✓ Blood drop cooldown finalizado!");
                     });
                 }
             }
             else
             {
                 Puts("[BloodHunt] ERRO: Falha ao criar o item blood!");
-            }
-        }
-
-        // Hook executado quando um container é aberto
-        void OnStorageOpen(StorageContainer container, BasePlayer player)
-        {
-            if (container == null || player == null || bloodDropped) return;
-
-            ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
-            if (bloodDef == null) return;
-
-            // Dropar o blood no inventário do player
-            var bloodItem = ItemManager.Create(bloodDef, 1);
-            if (bloodItem != null)
-            {
-                if (bloodItem.MoveToContainer(player.inventory))
-                {
-                    bloodDropped = true;
-                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood enviado para {player.displayName}!");
-                    player.ChatMessage($"<color=#ff1744>[BloodHunt]</color> Parabéns! Você ganhou o <color=#ff1744>BLOOD</color>!");
-                    
-                    // Reset após 10 minutos (600s)
-                    timer.Once(600f, () => {
-                        bloodDropped = false;
-                        Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
-                    });
-                }
-                else
-                {
-                    // Se o inventário estiver cheio, dropar no chão
-                    Vector3 dropPosition = player.transform.position + Vector3.up * 1f;
-                    bloodItem.Drop(dropPosition, Vector3.up * 1f);
-                    bloodDropped = true;
-                    Puts($"<color=#ff1744>[BloodHunt]</color> Inventário cheio! Blood dropado no chão.");
-                    player.ChatMessage($"<color=#ff1744>[BloodHunt]</color> Seu inventário está cheio! O blood foi dropado no chão!");
-                    
-                    // Reset após 10 minutos (600s)
-                    timer.Once(600f, () => {
-                        bloodDropped = false;
-                        Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
-                    });
-                }
             }
         }
 
