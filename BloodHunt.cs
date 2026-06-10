@@ -241,14 +241,14 @@ namespace Oxide.Plugins
             bloodDropped = false; // Blood não existe no mapa
         }
 
-        // Hook executado quando uma entidade é destruída (barris, containers, etc)
-        void OnEntityKilled(BaseNetworkable entity, HitInfo info)
+        // Hook executado quando uma entidade combat é destruída (barris, containers, etc)
+        void OnEntityKilled(BaseCombatEntity entity, HitInfo info)
         {
             if (entity == null || bloodDropped) return;
 
             // Verificar se é um barril (pode ter várias variações)
-            string prefabName = entity.ShortPrefabName;
-            if (!prefabName.Contains("barrel") && !prefabName.Contains("oil_barrel")) return;
+            string prefabName = entity.ShortPrefabName.ToLower();
+            if (!prefabName.Contains("barrel")) return;
 
             ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
             if (bloodDef == null) return;
