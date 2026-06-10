@@ -91,40 +91,50 @@ namespace Oxide.Plugins
             string nomeDoPortador = "";
             ulong idDoPortador = 0;
 
-            var instances = ItemManager.itemList.Where(i => i.info.shortname == BloodShortname).ToList();
-
-            foreach (var inst in instances)
+            // Obter o item ID do sangue
+            ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
+            if (bloodDef == null)
             {
-                // 1. Está no inventário de alguém
-                if (inst.GetRootContainer() != null)
-                {
-                    var player = inst.GetRootContainer().playerOwner;
-                    if (player != null)
-                    {
-                        posicaoAtual = player.transform.position;
-                        nomeDoPortador = player.displayName;
-                        idDoPortador = player.userID;
-                        itemEncontrado = true;
-                        break;
-                    }
+                Puts("Erro: Item 'blood' não encontrado!");
+                return;
+            }
 
-                    // 2. Está dentro de um Baú/Fornalha
-                    var entity = inst.GetRootContainer().entityOwner;
-                    if (entity != null)
-                    {
-                        posicaoAtual = entity.transform.position;
-                        nomeDoPortador = "Guardado em uma base";
-                        itemEncontrado = true;
-                        break;
-                    }
-                }
-                // 3. Está dropado no chão
-                else if (inst.GetWorldEntity() != null)
+            // Procurar em todos os players
+            foreach (var player in BasePlayer.allPlayerList)
+            {
+                if (player == null || player.inventory == null) continue;
+
+                // Verificar inventário do player
+                var bloodItem = player.inventory.FindItemByItemID(bloodDef.itemid);
+                if (bloodItem != null)
                 {
-                    posicaoAtual = inst.GetWorldEntity().transform.position;
-                    nomeDoPortador = "Dropado no chão";
+                    posicaoAtual = player.transform.position;
+                    nomeDoPortador = player.displayName;
+                    idDoPortador = player.userID;
                     itemEncontrado = true;
                     break;
+                }
+            }
+
+            // Se não encontrou em nenhum player, procurar em containers (baús, fornalhas, etc)
+            if (!itemEncontrado)
+            {
+                foreach (var entity in BaseNetworkable.serverEntities)
+                {
+                    if (entity == null) continue;
+
+                    var container = entity as StorageContainer;
+                    if (container != null && container.inventory != null)
+                    {
+                        var bloodItem = container.inventory.FindItemByItemID(bloodDef.itemid);
+                        if (bloodItem != null)
+                        {
+                            posicaoAtual = entity.transform.position;
+                            nomeDoPortador = "Guardado em uma base";
+                            itemEncontrado = true;
+                            break;
+                        }
+                    }
                 }
             }
 
