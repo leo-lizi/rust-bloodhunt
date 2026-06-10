@@ -260,6 +260,9 @@ namespace Oxide.Plugins
                 bloodItem.Drop(entity.transform.position, Vector3.up * 2f);
                 bloodDropped = true;
                 Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado em {entity.transform.position}");
+                
+                // Reset após 10 minutos (600s)
+                timer.Once(600f, () => bloodDropped = false);
             }
         }
 
@@ -279,6 +282,9 @@ namespace Oxide.Plugins
                 bloodDropped = true;
                 Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado no container em {container.transform.position}");
                 player.ChatMessage($"<color=#ff1744>[BloodHunt]</color> O blood apareceu nesta caixa!");
+                
+                // Reset após 10 minutos (600s)
+                timer.Once(600f, () => bloodDropped = false);
             }
         }
 
