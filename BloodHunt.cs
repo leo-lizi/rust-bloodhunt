@@ -7,7 +7,7 @@ using Oxide.Core.Configuration;
 
 namespace Oxide.Plugins
 {
-    [Info("BloodHunt", "VitorVmax", "1.0.6")]
+    [Info("BloodHunt", "VitorVmax", "1.0.7")]
     [Description("Rastreia a Bolsa de Sangue no mapa e salva a chave Pix dos jogadores.")]
     public class BloodHunt : RustPlugin
     {
@@ -108,7 +108,7 @@ namespace Oxide.Plugins
             var bloodItem = ItemManager.Create(bloodDef, 1);
             if (bloodItem != null)
             {
-                if (bloodItem.MoveToContainer(player.inventory))
+                if (bloodItem.MoveToContainer(player.inventory.containerMain))
                 {
                     Puts($"[BloodHunt] TESTE: Blood adicionado ao inventário de {player.displayName}!");
                     player.ChatMessage("<color=#00e676>[BloodHunt]</color> TESTE: Blood adicionado ao seu inventário!");
@@ -304,7 +304,7 @@ namespace Oxide.Plugins
             var bloodItem = ItemManager.Create(bloodDef, 1);
             if (bloodItem != null)
             {
-                if (bloodItem.MoveToContainer(attacker.inventory))
+                if (bloodItem.MoveToContainer(attacker.inventory.containerMain))
                 {
                     bloodDropped = true;
                     Puts($"[BloodHunt] ✓ Blood enviado para {attacker.displayName}!");
