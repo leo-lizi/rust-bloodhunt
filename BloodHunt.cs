@@ -241,6 +241,28 @@ namespace Oxide.Plugins
             bloodDropped = false; // Blood não existe no mapa
         }
 
+        // Hook executado quando uma entidade é destruída (barris, containers, etc)
+        void OnEntityKilled(BaseNetworkable entity, HitInfo info)
+        {
+            if (entity == null || bloodDropped) return;
+
+            // Verificar se é um barril (pode ter várias variações)
+            string prefabName = entity.ShortPrefabName;
+            if (!prefabName.Contains("barrel") && !prefabName.Contains("oil_barrel")) return;
+
+            ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
+            if (bloodDef == null) return;
+
+            // Dropar o blood na posição do barril destruído
+            var bloodItem = ItemManager.Create(bloodDef, 1);
+            if (bloodItem != null)
+            {
+                bloodItem.Drop(entity.transform.position, Vector3.up * 2f);
+                bloodDropped = true;
+                Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado em {entity.transform.position}");
+            }
+        }
+
         // Hook executado quando um container é aberto
         void OnStorageOpen(StorageContainer container, BasePlayer player)
         {
