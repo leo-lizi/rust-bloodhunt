@@ -46,7 +46,7 @@ namespace Oxide.Plugins
         {
             updateTimer = timer.Every(5f, UpdateMarkerPosition);
             UpdateMarkerPosition();
-            VerificarSeBloodExiste(); // Verifica ao inicializar o servidor
+            bloodDropped = false; // Inicia permitindo drop
         }
 
         void OnUnload()
@@ -86,9 +86,7 @@ namespace Oxide.Plugins
         void CmdDebugBlood(BasePlayer player, string command, string[] args)
         {
             bloodDropped = false; // Reset
-            VerificarSeBloodExiste();
-            
-            player.ChatMessage($"<color=#ffeb3b>[Debug]</color> bloodDropped = {bloodDropped}");
+            player.ChatMessage($"<color=#ffeb3b>[Debug]</color> bloodDropped resetado para false");
         }
 
         #endregion
@@ -205,42 +203,6 @@ namespace Oxide.Plugins
 
         #region Auto-Drop Blood Logic
 
-        private void VerificarSeBloodExiste()
-        {
-            ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
-            if (bloodDef == null) return;
-
-            // Verificar em players
-            foreach (var player in BasePlayer.allPlayerList)
-            {
-                if (player == null || player.inventory == null) continue;
-                var bloodItem = player.inventory.FindItemByItemID(bloodDef.itemid);
-                if (bloodItem != null)
-                {
-                    bloodDropped = true;
-                    return;
-                }
-            }
-
-            // Verificar em containers
-            foreach (var entity in BaseNetworkable.serverEntities)
-            {
-                if (entity == null) continue;
-                var container = entity as StorageContainer;
-                if (container != null && container.inventory != null)
-                {
-                    var bloodItem = container.inventory.FindItemByItemID(bloodDef.itemid);
-                    if (bloodItem != null)
-                    {
-                        bloodDropped = true;
-                        return;
-                    }
-                }
-            }
-
-            bloodDropped = false; // Blood não existe no mapa
-        }
-
         // Hook executado quando uma entidade combat é destruída (barris, containers, etc)
         void OnEntityKilled(BaseCombatEntity entity, HitInfo info)
         {
@@ -262,7 +224,10 @@ namespace Oxide.Plugins
                 Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado em {entity.transform.position}");
                 
                 // Reset após 10 minutos (600s)
-                timer.Once(600f, () => bloodDropped = false);
+                timer.Once(600f, () => {
+                    bloodDropped = false;
+                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
+                });
             }
         }
 
@@ -284,7 +249,10 @@ namespace Oxide.Plugins
                 player.ChatMessage($"<color=#ff1744>[BloodHunt]</color> O blood apareceu nesta caixa!");
                 
                 // Reset após 10 minutos (600s)
-                timer.Once(600f, () => bloodDropped = false);
+                timer.Once(600f, () => {
+                    bloodDropped = false;
+                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
+                });
             }
         }
 
