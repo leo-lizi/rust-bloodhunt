@@ -209,11 +209,22 @@ namespace Oxide.Plugins
             if (entity == null || bloodDropped) return;
 
             // Verificar se é um barril (pode ter várias variações)
-            string prefabName = entity.ShortPrefabName.ToLower();
-            if (!prefabName.Contains("barrel")) return;
+            string prefabName = entity.ShortPrefabName;
+            Puts($"[BloodHunt] Entidade destruída: {prefabName}");
+            
+            if (!prefabName.Contains("barrel") && !prefabName.Contains("oil_barrel")) 
+            {
+                return;
+            }
+
+            Puts($"[BloodHunt] Barril detectado: {prefabName}. Tentando dropar blood...");
 
             ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
-            if (bloodDef == null) return;
+            if (bloodDef == null) 
+            {
+                Puts("[BloodHunt] ERRO: Item 'blood' não encontrado!");
+                return;
+            }
 
             // Dropar o blood na posição do barril destruído
             var bloodItem = ItemManager.Create(bloodDef, 1);
@@ -228,6 +239,10 @@ namespace Oxide.Plugins
                     bloodDropped = false;
                     Puts($"<color=#ff1744>[BloodHunt]</color> Blood drop cooldown finalizado. Pronto para dropar novamente!");
                 });
+            }
+            else
+            {
+                Puts("[BloodHunt] ERRO: Falha ao criar o item blood!");
             }
         }
 
