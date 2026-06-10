@@ -82,6 +82,15 @@ namespace Oxide.Plugins
             player.ChatMessage($"<color=#ff1744>[Evento]</color> O último portador registrado foi: <color=#ffeb3b>{data.UltimoPortadorNome}</color>");
         }
 
+        [ChatCommand("debugblood")]
+        void CmdDebugBlood(BasePlayer player, string command, string[] args)
+        {
+            bloodDropped = false; // Reset
+            VerificarSeBloodExiste();
+            
+            player.ChatMessage($"<color=#ffeb3b>[Debug]</color> bloodDropped = {bloodDropped}");
+        }
+
         #endregion
 
         #region Lógica do Marcador
