@@ -7,13 +7,14 @@ using Oxide.Core.Configuration;
 
 namespace Oxide.Plugins
 {
-    [Info("BloodHunt", "VitorVmax", "1.0.1")]
+    [Info("BloodHunt", "VitorVmax", "1.0.2")]
     [Description("Rastreia a Bolsa de Sangue no mapa e salva a chave Pix dos jogadores.")]
     public class BloodHunt : RustPlugin
     {
         private const string BloodShortname = "blood";
         private BaseEntity mapMarker;
         private Timer updateTimer;
+        private bool bloodDropped = false; // Controla se o blood já foi dropado
 
         // Estrutura de Dados para salvar as chaves PIX
         private class PluginData
@@ -45,6 +46,7 @@ namespace Oxide.Plugins
         {
             updateTimer = timer.Every(5f, UpdateMarkerPosition);
             UpdateMarkerPosition();
+            VerificarSeBloodExiste(); // Verifica ao inicializar o servidor
         }
 
         void OnUnload()
@@ -132,6 +134,7 @@ namespace Oxide.Plugins
                             posicaoAtual = entity.transform.position;
                             nomeDoPortador = "Guardado em uma base";
                             itemEncontrado = true;
+                            bloodDropped = true; // Marca que o blood está no mapa
                             break;
                         }
                     }
@@ -187,6 +190,70 @@ namespace Oxide.Plugins
         private void SalvarDados()
         {
             dataFile.WriteObject(data);
+        }
+
+        #endregion
+
+        #region Auto-Drop Blood Logic
+
+        private void VerificarSeBloodExiste()
+        {
+            ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
+            if (bloodDef == null) return;
+
+            // Verificar em players
+            foreach (var player in BasePlayer.allPlayerList)
+            {
+                if (player == null || player.inventory == null) continue;
+                var bloodItem = player.inventory.FindItemByItemID(bloodDef.itemid);
+                if (bloodItem != null)
+                {
+                    bloodDropped = true;
+                    return;
+                }
+            }
+
+            // Verificar em containers
+            foreach (var entity in BaseNetworkable.serverEntities)
+            {
+                if (entity == null) continue;
+                var container = entity as StorageContainer;
+                if (container != null && container.inventory != null)
+                {
+                    var bloodItem = container.inventory.FindItemByItemID(bloodDef.itemid);
+                    if (bloodItem != null)
+                    {
+                        bloodDropped = true;
+                        return;
+                    }
+                }
+            }
+
+            bloodDropped = false; // Blood não existe no mapa
+        }
+
+        // Hook executado quando um container é aberto
+        void OnEntitySpawned(StorageContainer container)
+        {
+            if (container == null || bloodDropped) return;
+
+            // Esperar um frame para garantir que o container foi completamente inicializado
+            NextFrame(() =>
+            {
+                if (container == null || container.IsDestroyed) return;
+
+                ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
+                if (bloodDef == null) return;
+
+                // Dropar o blood dentro do container
+                var bloodItem = ItemManager.Create(bloodDef, 1);
+                if (bloodItem != null)
+                {
+                    bloodItem.MoveToContainer(container.inventory);
+                    bloodDropped = true;
+                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado no container em {container.transform.position}");
+                }
+            });
         }
 
         #endregion
