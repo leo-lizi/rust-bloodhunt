@@ -7,7 +7,7 @@ using Oxide.Core.Configuration;
 
 namespace Oxide.Plugins
 {
-    [Info("BloodHunt", "VitorVmax", "1.0.2")]
+    [Info("BloodHunt", "VitorVmax", "1.0.3")]
     [Description("Rastreia a Bolsa de Sangue no mapa e salva a chave Pix dos jogadores.")]
     public class BloodHunt : RustPlugin
     {
@@ -233,27 +233,22 @@ namespace Oxide.Plugins
         }
 
         // Hook executado quando um container é aberto
-        void OnEntitySpawned(StorageContainer container)
+        void OnStorageOpen(StorageContainer container, BasePlayer player)
         {
-            if (container == null || bloodDropped) return;
+            if (container == null || player == null || bloodDropped) return;
 
-            // Esperar um frame para garantir que o container foi completamente inicializado
-            NextFrame(() =>
+            ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
+            if (bloodDef == null) return;
+
+            // Dropar o blood dentro do container
+            var bloodItem = ItemManager.Create(bloodDef, 1);
+            if (bloodItem != null)
             {
-                if (container == null || container.IsDestroyed) return;
-
-                ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
-                if (bloodDef == null) return;
-
-                // Dropar o blood dentro do container
-                var bloodItem = ItemManager.Create(bloodDef, 1);
-                if (bloodItem != null)
-                {
-                    bloodItem.MoveToContainer(container.inventory);
-                    bloodDropped = true;
-                    Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado no container em {container.transform.position}");
-                }
-            });
+                bloodItem.MoveToContainer(container.inventory);
+                bloodDropped = true;
+                Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado no container em {container.transform.position}");
+                player.ChatMessage($"<color=#ff1744>[BloodHunt]</color> O blood apareceu nesta caixa!");
+            }
         }
 
         #endregion
