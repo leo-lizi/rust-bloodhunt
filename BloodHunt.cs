@@ -7,7 +7,7 @@ using Oxide.Core.Configuration;
 
 namespace Oxide.Plugins
 {
-    [Info("BloodHunt", "VitorVmax", "1.0.3")]
+    [Info("BloodHunt", "VitorVmax", "1.0.4")]
     [Description("Rastreia a Bolsa de Sangue no mapa e salva a chave Pix dos jogadores.")]
     public class BloodHunt : RustPlugin
     {
@@ -254,13 +254,15 @@ namespace Oxide.Plugins
             ItemDefinition bloodDef = ItemManager.FindItemDefinition(BloodShortname);
             if (bloodDef == null) return;
 
-            // Dropar o blood dentro do container
+            // Dropar o blood FORA do container (no chão)
             var bloodItem = ItemManager.Create(bloodDef, 1);
             if (bloodItem != null)
             {
-                bloodItem.MoveToContainer(container.inventory);
+                // Dropar na posição do container com offset para não ficar preso
+                Vector3 dropPosition = container.transform.position + Vector3.up * 1f;
+                bloodItem.Drop(dropPosition, Vector3.up * 1f);
                 bloodDropped = true;
-                Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado no container em {container.transform.position}");
+                Puts($"<color=#ff1744>[BloodHunt]</color> Blood dropado no chão em {dropPosition}");
                 player.ChatMessage($"<color=#ff1744>[BloodHunt]</color> O blood apareceu nesta caixa!");
                 
                 // Reset após 10 minutos (600s)
